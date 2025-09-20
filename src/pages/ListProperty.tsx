@@ -29,6 +29,7 @@ interface PropertyFormData {
     units_available: number;
     facilities: string[];
     price_lkr: number;
+    photos: string[]; // Add photos array for each room
   }>;
   checkin_time: string;
   checkout_time: string;
@@ -43,23 +44,27 @@ const AMENITY_CATEGORIES = {
   ],
   'Accessibility & Convenience': [
     'Elevators', 'ATM on site', 'Currency exchange', 'Secured parking', 
-    'Valet parking', 'Indoor/outdoor parking', 'Accessible parking'
+    'Valet parking', 'Indoor/outdoor parking', 'Accessible parking', 'Staircase'
   ],
   'Comfort & Utilities': [
     'Air conditioning', 'Heating', 'Safe in room', 'Non-smoking rooms', 
-    'Hairdresser/beautician', 'Ironing service', 'Dry cleaning', 'Laundry services'
+    'Hairdresser/beautician', 'Ironing service', 'Dry cleaning', 'Laundry services',
+    'Free wifi in rooms and public areas', 'Smoking area', 'Extra beds', 
+    'Extra chairs', 'Inter connection rooms', 'Baby sitting / child care services'
   ],
   'Dining & Refreshments': [
     'Restaurant', 'Bar', 'Breakfast (buffet or included)', 'Snack bar', 
-    'Vending machines (drinks/snacks)'
+    'Vending machines (drinks/snacks)', 'Dinner', 'Lunch', 'Bed tea'
   ],
   'Leisure & Wellness': [
     'Fitness center', 'Sauna', 'Jacuzzi/hot tub', 'Outdoor/indoor pool', 
-    'Turkish/steam bath', 'Solarium'
+    'Turkish/steam bath', 'Solarium', 'Lounge areas for reading or socializing',
+    'Garden, terraces or roof top decks', 'Nature walks, Cycling', 'Wellness programs'
   ],
   'Family & Entertainment': [
     'Game room', 'Kids\' club', 'Playground', 'Indoor play area', 
-    'Evening entertainment', 'Music/DVD library for children', 'Board games/puzzles'
+    'Evening entertainment', 'Music/DVD library for children', 'Board games/puzzles',
+    'Movie nights or mini cinema', 'Live music or performance'
   ],
   'Sport & Outdoor Activities': [
     'Tennis court and equipment', 'Golf course (within 2 miles)', 'Water sports facilities', 
@@ -73,25 +78,64 @@ const AMENITY_CATEGORIES = {
   ]
 };
 
-const ROOM_FACILITIES = [
-  'Flat-screen TV', 'Free WiFi', 'Air conditioning', 'View', 'Mountain view', 
-  'Minibar', 'Ensuite bathroom', 'Cable channels', 'Free toiletries', 'Shower', 
-  'Bathrobe', 'Safety deposit box', 'Bidet', 'Toilet', 'Towels', 'Linen', 
-  'Socket near the bed', 'Desk', 'Seating area', 'Slippers', 'Telephone', 
-  'Ironing facilities', 'Satellite channels', 'Tea/coffee maker', 'Iron', 
-  'Hairdryer', 'Fan', 'Wake-up service/alarm clock', 'Carpeted floor', 
-  'Electric kettle', 'Outdoor furniture', 'Wake-up service', 'Tumble dryer', 
-  'Wardrobe/closet', 'Clothes rack', 'Toilet paper', 'Hand sanitizer'
-];
+const ROOM_FACILITY_CATEGORIES = {
+  'Basic Comfort & Furniture': [
+    'Bed with quality mattress and linens',
+    'Nightstands / bedside tables',
+    'Wardrobe or closet with hangers',
+    'Desk and chair (for work or writing)',
+    'Seating area (armchair, sofa, or small bench)',
+    'Luggage rack'
+  ],
+  'Bathroom Essentials': [
+    'Private bathroom with shower or bathtub',
+    'Towels (bath, hand, face)',
+    'Bathrobes and slippers (for mid-range to luxury hotels)',
+    'Toiletries (shampoo, conditioner, soap, body wash, lotion)',
+    'Hairdryer',
+    'Toilet paper, tissues, and sanitary bins',
+    'Mirror (regular and sometimes magnifying)'
+  ],
+  'Technology & Entertainment': [
+    'Free Wi-Fi',
+    'Flat-screen TV with local and international channels',
+    'Telephone',
+    'Air conditioning / heating',
+    'Power outlets near bed and desk',
+    'Alarm clock or clock radio'
+  ],
+  'Refreshments & Mini Bar': [
+    'Electric kettle or coffee maker',
+    'Complimentary water bottles',
+    'Mini fridge (optional but preferred in mid-range and luxury hotels)',
+    'Coffee/tea supplies'
+  ],
+  'Safety & Security': [
+    'Safe / locker for valuables',
+    'Smoke detector',
+    'Fire extinguisher (usually in corridor, not inside room)',
+    'Emergency evacuation plan displayed'
+  ],
+  'Optional / Luxury Extras': [
+    'Balcony or terrace',
+    'Room service menu',
+    'Bath salts or aromatherapy kits',
+    'Iron and ironing board',
+    'Blackout curtains',
+    'Desk lamp or reading lamp'
+  ]
+};
 
 const ListProperty = () => {
   const MAX_PHOTOS = 20;
+  const MAX_ROOM_PHOTOS = 15; // Add room photo limit
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingRoomIndex, setUploadingRoomIndex] = useState<number | null>(null); // Track which room is uploading
 
   const [formData, setFormData] = useState<PropertyFormData>({
     property_type: '',
@@ -138,7 +182,8 @@ const ListProperty = () => {
         max_guests: 1,
         units_available: 1,
         facilities: [],
-        price_lkr: 0
+        price_lkr: 0,
+        photos: [] // Initialize empty photos array
       }]
     }));
   };
@@ -157,6 +202,48 @@ const ListProperty = () => {
       ...prev,
       rooms: prev.rooms.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleRoomPhotoUpload = async (roomIndex: number, files: File[]) => {
+    const room = formData.rooms[roomIndex];
+    if (!room) return;
+
+    const currentPhotos = room.photos.length;
+    const newPhotosCount = files.length;
+    
+    if (currentPhotos + newPhotosCount > MAX_ROOM_PHOTOS) {
+      toast({ 
+        title: "Upload limit exceeded", 
+        description: `You can only upload ${MAX_ROOM_PHOTOS} photos per room. Currently have ${currentPhotos} photos.` 
+      });
+      return;
+    }
+
+    setUploadingRoomIndex(roomIndex);
+    try {
+      const uploads = await Promise.all(
+        files.map(async (file) => {
+          const result = await uploadImageToCloudinary(file);
+          return result.url;
+        })
+      );
+      
+      updateRoom(roomIndex, 'photos', [...room.photos, ...uploads]);
+      toast({ title: "Uploaded", description: `${uploads.length} photo(s) uploaded to room.` });
+    } catch (err: any) {
+      console.error("Room photo upload error", err);
+      toast({ title: "Upload failed", description: err.message || "Unable to upload room photos", variant: "destructive" });
+    } finally {
+      setUploadingRoomIndex(null);
+    }
+  };
+
+  const removeRoomPhoto = (roomIndex: number, photoIndex: number) => {
+    const room = formData.rooms[roomIndex];
+    if (!room) return;
+
+    const updatedPhotos = room.photos.filter((_, index) => index !== photoIndex);
+    updateRoom(roomIndex, 'photos', updatedPhotos);
   };
 
   const handleSubmit = async () => {
@@ -198,14 +285,40 @@ const ListProperty = () => {
           price_lkr: room.price_lkr
         }));
 
-        const { error: roomsError } = await supabase
+        const { data: rooms, error: roomsError } = await supabase
           .from('property_rooms')
-          .insert(roomsData);
+          .insert(roomsData)
+          .select();
 
         if (roomsError) throw roomsError;
+
+        // Create room photos for each room (following the same pattern as property photos)
+        if (rooms) {
+          for (let i = 0; i < formData.rooms.length; i++) {
+            const room = formData.rooms[i];
+            const savedRoom = rooms[i];
+            
+            if (room.photos && room.photos.length > 0) {
+              const roomPhotosData = room.photos.map((photoUrl, photoIndex) => ({
+                room_id: savedRoom.id,
+                photo_url: photoUrl,
+                sort_order: photoIndex
+              }));
+
+              const { error: roomPhotosError } = await supabase
+                .from('room_photos')
+                .insert(roomPhotosData);
+
+              if (roomPhotosError) {
+                console.error('Error saving room photos:', roomPhotosError);
+                // Don't throw here, just log the error and continue
+              }
+            }
+          }
+        }
       }
 
-      // Create photos
+      // Create property photos
       if (formData.photos.length > 0) {
         const photosData = formData.photos.map((url, index) => ({
           property_id: property.id,
@@ -483,24 +596,105 @@ const ListProperty = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Room Facilities</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                      {ROOM_FACILITIES.map((facility) => (
-                        <div key={facility} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`${index}-${facility}`}
-                            checked={room.facilities.includes(facility)}
-                            onCheckedChange={(checked) => {
-                              const facilities = checked
-                                ? [...room.facilities, facility]
-                                : room.facilities.filter(f => f !== facility);
-                              updateRoom(index, 'facilities', facilities);
-                            }}
-                          />
-                          <Label htmlFor={`${index}-${facility}`} className="text-sm">
-                            {facility}
-                          </Label>
+                    <div className="space-y-4 max-h-60 overflow-y-auto">
+                      {Object.entries(ROOM_FACILITY_CATEGORIES).map(([category, facilities]) => (
+                        <div key={category} className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-700">{category}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {facilities.map((facility) => (
+                              <div key={facility} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${index}-${facility}`}
+                                  checked={room.facilities.includes(facility)}
+                                  onCheckedChange={(checked) => {
+                                    const facilities = checked
+                                      ? [...room.facilities, facility]
+                                      : room.facilities.filter(f => f !== facility);
+                                    updateRoom(index, 'facilities', facilities);
+                                  }}
+                                />
+                                <Label htmlFor={`${index}-${facility}`} className="text-sm">
+                                  {facility}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Room Photos Section */}
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-base font-medium">Room Photos</Label>
+                      <span className="text-sm text-muted-foreground">
+                        {room.photos.length}/{MAX_ROOM_PHOTOS} photos
+                      </span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Upload Button */}
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="file"
+                          id={`room-photos-${index}`}
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length === 0) return;
+                            await handleRoomPhotoUpload(index, files);
+                            e.currentTarget.value = "";
+                          }}
+                          disabled={room.photos.length >= MAX_ROOM_PHOTOS || uploadingRoomIndex === index}
+                        />
+                        <Label
+                          htmlFor={`room-photos-${index}`}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${
+                            room.photos.length >= MAX_ROOM_PHOTOS || uploadingRoomIndex === index
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                              : 'cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90'
+                          }`}
+                        >
+                          {uploadingRoomIndex === index
+                            ? 'Uploading...'
+                            : room.photos.length >= MAX_ROOM_PHOTOS
+                            ? 'Max photos reached'
+                            : 'Add Room Photos'
+                          }
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          You can select multiple images. Max {MAX_ROOM_PHOTOS} photos per room.
+                        </p>
+                      </div>
+
+                      {/* Photo Preview */}
+                      {room.photos.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Room Photo Preview</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {room.photos.map((url, photoIndex) => (
+                              <div key={url + photoIndex} className="relative group">
+                                <img
+                                  src={url}
+                                  alt={`Room ${index + 1} Photo ${photoIndex + 1}`}
+                                  className="w-full h-24 object-cover rounded-md border"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute top-1 right-1 bg-background/80 backdrop-blur border rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                                  onClick={() => removeRoomPhoto(index, photoIndex)}
+                                  aria-label="Remove room photo"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
