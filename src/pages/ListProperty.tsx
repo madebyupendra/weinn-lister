@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ interface PropertyFormData {
   state: string;
   amenities: Record<string, string[]>;
   rooms: Array<{
+    id?: string; // Add id for existing rooms
     room_type: string;
     bed_type: string;
     max_guests: number;
@@ -131,11 +132,14 @@ const ListProperty = () => {
   const MAX_ROOM_PHOTOS = 15; // Add room photo limit
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingRoomIndex, setUploadingRoomIndex] = useState<number | null>(null); // Track which room is uploading
+  const [loading, setLoading] = useState(false);
+  const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState<PropertyFormData>({
     property_type: '',
@@ -157,6 +161,93 @@ const ListProperty = () => {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
+  // Load existing property data when editing
+  useEffect(() => {
+    if (isEditing && id) {
+      loadPropertyData();
+    }
+  }, [isEditing, id]);
+
+  const loadPropertyData = async () => {
+    setLoading(true);
+    try {
+      // Fetch property with photos
+      const { data: propertyData, error: propertyError } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          property_photos (
+            id,
+            photo_url,
+            caption,
+            sort_order
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (propertyError) throw propertyError;
+
+      // Fetch rooms with their photos
+      const { data: roomsData, error: roomsError } = await supabase
+        .from('property_rooms')
+        .select(`
+          *,
+          room_photos (
+            id,
+            photo_url,
+            caption,
+            sort_order
+          )
+        `)
+        .eq('property_id', id)
+        .order('created_at');
+
+      if (roomsError) throw roomsError;
+
+      // Convert amenities from JSON to the expected format
+      const amenities = propertyData.amenities as Record<string, string[]> || {};
+
+      // Convert rooms data
+      const rooms = (roomsData || []).map(room => {
+        const { facilities, room_photos, ...roomData } = room;
+        return {
+          ...roomData,
+          facilities: Array.isArray(facilities) ? facilities : [],
+          photos: (room_photos || []).map((photo: any) => photo.photo_url)
+        };
+      });
+
+      // Convert property photos
+      const photos = (propertyData.property_photos || []).map((photo: any) => photo.photo_url);
+
+      setFormData({
+        property_type: propertyData.property_type,
+        name: propertyData.name,
+        description: propertyData.description || '',
+        street_address: propertyData.street_address,
+        city: propertyData.city,
+        state: propertyData.state,
+        amenities: amenities,
+        rooms: rooms,
+        checkin_time: propertyData.checkin_time || '',
+        checkout_time: propertyData.checkout_time || '',
+        cancellation_policy: propertyData.cancellation_policy || '',
+        photos: photos
+      });
+    } catch (error: any) {
+      console.error('Error loading property:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load property data. Please try again.",
+        variant: "destructive",
+      });
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const totalSteps = 7;
   const progress = (currentStep / totalSteps) * 100;
@@ -251,99 +342,201 @@ const ListProperty = () => {
 
     setIsSubmitting(true);
     try {
-      // Create property
-      const { data: property, error: propertyError } = await supabase
-        .from('properties')
-        .insert({
-          user_id: user.id,
-          property_type: formData.property_type,
-          name: formData.name,
-          description: formData.description,
-          street_address: formData.street_address,
-          city: formData.city,
-          state: formData.state,
-          amenities: formData.amenities,
-          checkin_time: formData.checkin_time,
-          checkout_time: formData.checkout_time,
-          cancellation_policy: formData.cancellation_policy,
-          status: 'published'
-        })
-        .select()
-        .single();
+      if (isEditing) {
+        // Update existing property
+        const { error: propertyError } = await supabase
+          .from('properties')
+          .update({
+            property_type: formData.property_type,
+            name: formData.name,
+            description: formData.description,
+            street_address: formData.street_address,
+            city: formData.city,
+            state: formData.state,
+            amenities: formData.amenities,
+            checkin_time: formData.checkin_time,
+            checkout_time: formData.checkout_time,
+            cancellation_policy: formData.cancellation_policy,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
 
-      if (propertyError) throw propertyError;
+        if (propertyError) throw propertyError;
 
-      // Create rooms
-      if (formData.rooms.length > 0) {
-        const roomsData = formData.rooms.map(room => ({
-          property_id: property.id,
-          room_type: room.room_type,
-          bed_type: room.bed_type,
-          max_guests: room.max_guests,
-          units_available: room.units_available,
-          facilities: room.facilities,
-          price_lkr: room.price_lkr
-        }));
-
-        const { data: rooms, error: roomsError } = await supabase
+        // Delete existing rooms and recreate them
+        const { error: deleteRoomsError } = await supabase
           .from('property_rooms')
-          .insert(roomsData)
-          .select();
+          .delete()
+          .eq('property_id', id);
 
-        if (roomsError) throw roomsError;
+        if (deleteRoomsError) throw deleteRoomsError;
 
-        // Create room photos for each room (following the same pattern as property photos)
-        if (rooms) {
-          for (let i = 0; i < formData.rooms.length; i++) {
-            const room = formData.rooms[i];
-            const savedRoom = rooms[i];
-            
-            if (room.photos && room.photos.length > 0) {
-              const roomPhotosData = room.photos.map((photoUrl, photoIndex) => ({
-                room_id: savedRoom.id,
-                photo_url: photoUrl,
-                sort_order: photoIndex
-              }));
+        // Create updated rooms
+        if (formData.rooms.length > 0) {
+          const roomsData = formData.rooms.map(room => ({
+            property_id: id,
+            room_type: room.room_type,
+            bed_type: room.bed_type,
+            max_guests: room.max_guests,
+            units_available: room.units_available,
+            facilities: room.facilities,
+            price_lkr: room.price_lkr
+          }));
 
-              const { error: roomPhotosError } = await supabase
-                .from('room_photos')
-                .insert(roomPhotosData);
+          const { data: rooms, error: roomsError } = await supabase
+            .from('property_rooms')
+            .insert(roomsData)
+            .select();
 
-              if (roomPhotosError) {
-                console.error('Error saving room photos:', roomPhotosError);
-                // Don't throw here, just log the error and continue
+          if (roomsError) throw roomsError;
+
+          // Create room photos for each room
+          if (rooms) {
+            for (let i = 0; i < formData.rooms.length; i++) {
+              const room = formData.rooms[i];
+              const savedRoom = rooms[i];
+              
+              if (room.photos && room.photos.length > 0) {
+                const roomPhotosData = room.photos.map((photoUrl, photoIndex) => ({
+                  room_id: savedRoom.id,
+                  photo_url: photoUrl,
+                  sort_order: photoIndex
+                }));
+
+                const { error: roomPhotosError } = await supabase
+                  .from('room_photos')
+                  .insert(roomPhotosData);
+
+                if (roomPhotosError) {
+                  console.error('Error saving room photos:', roomPhotosError);
+                }
               }
             }
           }
         }
-      }
 
-      // Create property photos
-      if (formData.photos.length > 0) {
-        const photosData = formData.photos.map((url, index) => ({
-          property_id: property.id,
-          photo_url: url,
-          sort_order: index,
-        }));
-
-        const { error: photosError } = await supabase
+        // Delete existing property photos and recreate them
+        const { error: deletePhotosError } = await supabase
           .from('property_photos')
-          .insert(photosData);
+          .delete()
+          .eq('property_id', id);
 
-        if (photosError) throw photosError;
+        if (deletePhotosError) throw deletePhotosError;
+
+        // Create updated property photos
+        if (formData.photos.length > 0) {
+          const photosData = formData.photos.map((url, index) => ({
+            property_id: id,
+            photo_url: url,
+            sort_order: index,
+          }));
+
+          const { error: photosError } = await supabase
+            .from('property_photos')
+            .insert(photosData);
+
+          if (photosError) throw photosError;
+        }
+
+        toast({
+          title: "Property Updated Successfully!",
+          description: "Your property has been updated.",
+        });
+      } else {
+        // Create new property (existing logic)
+        const { data: property, error: propertyError } = await supabase
+          .from('properties')
+          .insert({
+            user_id: user.id,
+            property_type: formData.property_type,
+            name: formData.name,
+            description: formData.description,
+            street_address: formData.street_address,
+            city: formData.city,
+            state: formData.state,
+            amenities: formData.amenities,
+            checkin_time: formData.checkin_time,
+            checkout_time: formData.checkout_time,
+            cancellation_policy: formData.cancellation_policy,
+            status: 'published'
+          })
+          .select()
+          .single();
+
+        if (propertyError) throw propertyError;
+
+        // Create rooms
+        if (formData.rooms.length > 0) {
+          const roomsData = formData.rooms.map(room => ({
+            property_id: property.id,
+            room_type: room.room_type,
+            bed_type: room.bed_type,
+            max_guests: room.max_guests,
+            units_available: room.units_available,
+            facilities: room.facilities,
+            price_lkr: room.price_lkr
+          }));
+
+          const { data: rooms, error: roomsError } = await supabase
+            .from('property_rooms')
+            .insert(roomsData)
+            .select();
+
+          if (roomsError) throw roomsError;
+
+          // Create room photos for each room (following the same pattern as property photos)
+          if (rooms) {
+            for (let i = 0; i < formData.rooms.length; i++) {
+              const room = formData.rooms[i];
+              const savedRoom = rooms[i];
+              
+              if (room.photos && room.photos.length > 0) {
+                const roomPhotosData = room.photos.map((photoUrl, photoIndex) => ({
+                  room_id: savedRoom.id,
+                  photo_url: photoUrl,
+                  sort_order: photoIndex
+                }));
+
+                const { error: roomPhotosError } = await supabase
+                  .from('room_photos')
+                  .insert(roomPhotosData);
+
+                if (roomPhotosError) {
+                  console.error('Error saving room photos:', roomPhotosError);
+                  // Don't throw here, just log the error and continue
+                }
+              }
+            }
+          }
+        }
+
+        // Create property photos
+        if (formData.photos.length > 0) {
+          const photosData = formData.photos.map((url, index) => ({
+            property_id: property.id,
+            photo_url: url,
+            sort_order: index,
+          }));
+
+          const { error: photosError } = await supabase
+            .from('property_photos')
+            .insert(photosData);
+
+          if (photosError) throw photosError;
+        }
+
+        toast({
+          title: "Property Listed Successfully!",
+          description: "Your property has been listed and is now live.",
+        });
       }
-
-      toast({
-        title: "Property Listed Successfully!",
-        description: "Your property has been listed and is now live.",
-      });
 
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Error submitting property:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to list property. Please try again.",
+        description: error.message || `Failed to ${isEditing ? 'update' : 'list'} property. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -351,7 +544,7 @@ const ListProperty = () => {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -909,7 +1102,7 @@ const ListProperty = () => {
               </Button>
             </div>
             <div className="text-sm text-muted-foreground">
-              Step {currentStep} of {totalSteps}
+              {isEditing ? 'Edit Property' : 'List New Property'} - Step {currentStep} of {totalSteps}
             </div>
           </div>
           <div className="mt-4">
