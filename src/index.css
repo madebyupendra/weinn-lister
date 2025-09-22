@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom font faces - Apfel Grotezk */
+@font-face {
+  font-family: 'Apfel Grotezk';
+  src: url('./assets/fonts/ApfelGrotezk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+
+@font-face {
+  font-family: 'Apfel Grotezk';
+  src: url('./assets/fonts/ApfelGrotezk-Mittel.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
@@ -61,6 +80,9 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom font variables */
+    --font-sans: 'Apfel Grotezk', ui-sans-serif, system-ui, sans-serif;
   }
 
   .dark {
@@ -109,5 +131,25 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.6;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  /* Custom font weight classes for better control */
+  .font-regular {
+    font-family: var(--font-sans);
+    font-weight: 400;
+  }
+  
+  .font-mittel {
+    font-family: var(--font-sans);
+    font-weight: 500;
   }
 }

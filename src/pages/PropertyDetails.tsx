@@ -301,15 +301,12 @@ const PropertyDetails = () => {
                 Back to Dashboard
               </Button>
             </div>
-            <Badge variant={property.status === 'published' ? 'default' : 'secondary'}>
-              {property.status}
-            </Badge>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 md:px-[160px] py-8 max-w-7xl">
         <div className="w-full">
           {/* Property Header */}
           <div className="mb-8">
@@ -681,34 +678,24 @@ const PropertyDetails = () => {
 
             {/* Sidebar */}
             <div className="space-y-4 lg:space-y-6">
-              {/* Policies */}
+              {/* Special Notice */}
               <div>
-                <h2 className="text-xl font-bold mb-4 flex items-center">
-                    <Shield className="h-5 w-5 mr-2" />
-                    Policies
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-1">Cancellation policy</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {property.cancellation_policy === 'Free' 
-                        ? 'Free cancellation available' 
-                        : 'Non-refundable booking'
-                      }
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-1">Check-in time</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {formatTime(property.checkin_time)}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-1">Check-out time</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {formatTime(property.checkout_time)}
-                    </p>
+                <div className="border border-primary/20 rounded-lg p-6 bg-gradient-to-r from-primary/5 to-accent/5">
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-foreground mb-4">
+                      Thank you for partnering with Weinn!
+                    </h3>
+                    <div className="text-muted-foreground leading-relaxed space-y-3">
+                      <p>
+                        We're excited to welcome you to our journey of transforming hotel bookings in Sri Lanka. Your property listing and data will be seamlessly integrated into the exclusive Weinn mobile app, launching in early 2026.
+                      </p>
+                      <p>
+                        As one of our early partners, you'll be the first to experience our AI-powered, technology-rich, hassle-free booking management platform—designed and built right here in Sri Lanka to support our nation's hospitality industry with a truly better product.
+                      </p>
+                      <p>
+                        For now, we've collected your basic hotel details, and once the app launches, you'll be able to set up, customize, and update your listing anytime to showcase your property at its very best.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

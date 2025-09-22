@@ -94,14 +94,14 @@ const Auth = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <Card>
-                <CardHeader>
+              <Card className="border-0">
+                <CardHeader className="px-0">
                   <CardTitle>Welcome Back</CardTitle>
                   <CardDescription>
                     Sign in to manage your properties
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signin-email">Email</Label>
@@ -147,14 +147,14 @@ const Auth = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <Card>
-                <CardHeader>
+              <Card className="border-0">
+                <CardHeader className="px-0">
                   <CardTitle>Create Your Account</CardTitle>
                   <CardDescription>
                     Join WeInn and start listing your properties
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-name">Full Name</Label>
