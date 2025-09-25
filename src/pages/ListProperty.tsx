@@ -677,13 +677,25 @@ const ListProperty = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
+                  <Select
                     value={formData.state}
-                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                    placeholder="Enter state/province"
-                    required
-                  />
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, state: value }))}
+                  >
+                    <SelectTrigger id="state">
+                      <SelectValue placeholder="Select province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Western">Western</SelectItem>
+                      <SelectItem value="Central">Central</SelectItem>
+                      <SelectItem value="Southern">Southern</SelectItem>
+                      <SelectItem value="Northern">Northern</SelectItem>
+                      <SelectItem value="Eastern">Eastern</SelectItem>
+                      <SelectItem value="North Western">North Western</SelectItem>
+                      <SelectItem value="North Central">North Central</SelectItem>
+                      <SelectItem value="Uva">Uva</SelectItem>
+                      <SelectItem value="Sabaragamuwa">Sabaragamuwa</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
