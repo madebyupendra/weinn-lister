@@ -292,6 +292,9 @@ const PropertyDetails = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto" />
+            </div>
+            <div className="flex items-center space-x-3">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -365,7 +368,7 @@ const PropertyDetails = () => {
                   {property.name}
                 </h1>
                 <div className="flex items-center text-muted-foreground mb-2">
-                  <MapPin className="h-5 w-5 mr-2 flex-shrink-0" />
+                  <MapPin className="h-5 w-5 mr-2 flex-shrink-0 hidden md:block" />
                   <span className="text-lg break-words">
                     {property.street_address}, {property.city}, {property.state}
                   </span>

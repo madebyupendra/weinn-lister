@@ -1125,6 +1125,12 @@ const ListProperty = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto" />
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="text-sm text-muted-foreground">
+                {isEditing ? 'Edit Property' : 'List New Property'} - Step {currentStep} of {totalSteps}
+              </div>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1133,9 +1139,6 @@ const ListProperty = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {isEditing ? 'Edit Property' : 'List New Property'} - Step {currentStep} of {totalSteps}
             </div>
           </div>
           <div className="mt-4">
