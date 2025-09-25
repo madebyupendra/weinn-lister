@@ -29,7 +29,7 @@ interface PropertyFormData {
     max_guests: number;
     units_available: number;
     facilities: string[];
-    price_lkr: number;
+    price_lkr: number | null;
     photos: string[]; // Add photos array for each room
   }>;
   checkin_time: string;
@@ -140,6 +140,23 @@ const ListProperty = () => {
   const [uploadingRoomIndex, setUploadingRoomIndex] = useState<number | null>(null); // Track which room is uploading
   const [loading, setLoading] = useState(false);
   const isEditing = Boolean(id);
+  // Format an integer with thousand separators
+  const formatWithThousandSeparators = (value: number) => {
+    try {
+      return value.toLocaleString('en-US');
+    } catch {
+      return String(value);
+    }
+  };
+
+  // Parse user input to an integer number (no decimals) or null
+  const parsePriceInput = (input: string): number | null => {
+    const digitsOnly = input.replace(/\D/g, '');
+    if (digitsOnly.length === 0) return null;
+    const numeric = parseInt(digitsOnly, 10);
+    return Number.isNaN(numeric) ? null : numeric;
+  };
+
 
   const [formData, setFormData] = useState<PropertyFormData>({
     property_type: '',
@@ -249,7 +266,7 @@ const ListProperty = () => {
     }
   };
 
-  const totalSteps = 7;
+  const totalSteps = 6;
   const progress = (currentStep / totalSteps) * 100;
 
   const nextStep = () => {
@@ -273,7 +290,7 @@ const ListProperty = () => {
         max_guests: 1,
         units_available: 1,
         facilities: [],
-        price_lkr: 0,
+        price_lkr: null,
         photos: [] // Initialize empty photos array
       }]
     }));
@@ -342,6 +359,19 @@ const ListProperty = () => {
 
     setIsSubmitting(true);
     try {
+      // Validate required room fields
+      for (const room of formData.rooms) {
+        if (room.price_lkr === null || Number.isNaN(room.price_lkr)) {
+          toast({
+            title: "Missing price",
+            description: "Please enter a Price per Unit (LKR) for all rooms.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       if (isEditing) {
         // Update existing property
         const { error: propertyError } = await supabase
@@ -656,6 +686,89 @@ const ListProperty = () => {
                   />
                 </div>
               </div>
+
+              {/* Upload Photos Section */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Upload Photos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Upload photos of your property. You can select multiple images.
+                  </p>
+                </div>
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                  <input
+                    id="photos"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      const allFiles = Array.from(e.target.files || []);
+                      if (allFiles.length === 0) return;
+
+                      const remaining = MAX_PHOTOS - formData.photos.length;
+                      if (remaining <= 0) {
+                        toast({ title: "Limit reached", description: `You can upload up to ${MAX_PHOTOS} photos.`, variant: "destructive" });
+                        e.currentTarget.value = "";
+                        return;
+                      }
+
+                      const files = allFiles.slice(0, remaining);
+                      if (allFiles.length > remaining) {
+                        toast({ title: "Too many files", description: `Only ${remaining} more photo(s) can be uploaded (max ${MAX_PHOTOS}).` });
+                      }
+                      setIsUploading(true);
+                      try {
+                        const uploads = await Promise.all(
+                          files.map(async (file) => {
+                            const result = await uploadImageToCloudinary(file);
+                            return result.url;
+                          })
+                        );
+                        setFormData((prev) => ({ ...prev, photos: [...prev.photos, ...uploads] }));
+                        toast({ title: "Uploaded", description: `${uploads.length} photo(s) uploaded.` });
+                      } catch (err: any) {
+                        console.error("Upload error", err);
+                        toast({ title: "Upload failed", description: err.message || "Unable to upload", variant: "destructive" });
+                      } finally {
+                        setIsUploading(false);
+                        // reset the input so same files can be selected again
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor="photos"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${formData.photos.length >= MAX_PHOTOS || isUploading ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                  >
+                    {isUploading ? 'Uploading...' : (formData.photos.length >= MAX_PHOTOS ? 'Max photos reached' : 'Select Photos')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-2">{formData.photos.length}/{MAX_PHOTOS} uploaded. You can select multiple images.</p>
+                </div>
+
+                {formData.photos.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Preview</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {formData.photos.map((url, idx) => (
+                        <div key={url + idx} className="relative group">
+                          <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-32 object-cover rounded-md border" />
+                          <button
+                            type="button"
+                            className="absolute top-1 right-1 bg-background/80 backdrop-blur border rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                            onClick={() =>
+                              setFormData((prev) => ({ ...prev, photos: prev.photos.filter((p, i) => i !== idx) }))
+                            }
+                            aria-label="Remove photo"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         );
@@ -781,9 +894,13 @@ const ListProperty = () => {
                   <div className="space-y-2">
                     <Label>Price per Unit (LKR)</Label>
                     <Input
-                      type="number"
-                      value={room.price_lkr}
-                      onChange={(e) => updateRoom(index, 'price_lkr', parseFloat(e.target.value) || 0)}
+                      type="text"
+                      inputMode="numeric"
+                      value={room.price_lkr === null ? '' : formatWithThousandSeparators(room.price_lkr)}
+                      onChange={(e) => {
+                        const parsed = parsePriceInput(e.target.value);
+                        updateRoom(index, 'price_lkr', parsed);
+                      }}
                       placeholder="Enter price in LKR"
                     />
                   </div>
@@ -943,90 +1060,6 @@ const ListProperty = () => {
         );
 
       case 6:
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Photos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                <input
-                  id="photos"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={async (e) => {
-                    const allFiles = Array.from(e.target.files || []);
-                    if (allFiles.length === 0) return;
-
-                    const remaining = MAX_PHOTOS - formData.photos.length;
-                    if (remaining <= 0) {
-                      toast({ title: "Limit reached", description: `You can upload up to ${MAX_PHOTOS} photos.`, variant: "destructive" });
-                      e.currentTarget.value = "";
-                      return;
-                    }
-
-                    const files = allFiles.slice(0, remaining);
-                    if (allFiles.length > remaining) {
-                      toast({ title: "Too many files", description: `Only ${remaining} more photo(s) can be uploaded (max ${MAX_PHOTOS}).` });
-                    }
-                    setIsUploading(true);
-                    try {
-                      const uploads = await Promise.all(
-                        files.map(async (file) => {
-                          const result = await uploadImageToCloudinary(file);
-                          return result.url;
-                        })
-                      );
-                      setFormData((prev) => ({ ...prev, photos: [...prev.photos, ...uploads] }));
-                      toast({ title: "Uploaded", description: `${uploads.length} photo(s) uploaded.` });
-                    } catch (err: any) {
-                      console.error("Upload error", err);
-                      toast({ title: "Upload failed", description: err.message || "Unable to upload", variant: "destructive" });
-                    } finally {
-                      setIsUploading(false);
-                      // reset the input so same files can be selected again
-                      e.currentTarget.value = "";
-                    }
-                  }}
-                />
-                <Label
-                  htmlFor="photos"
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${formData.photos.length >= MAX_PHOTOS || isUploading ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90'}`}
-                >
-                  {isUploading ? 'Uploading...' : (formData.photos.length >= MAX_PHOTOS ? 'Max photos reached' : 'Select Photos')}
-                </Label>
-                <p className="text-xs text-muted-foreground mt-2">{formData.photos.length}/{MAX_PHOTOS} uploaded. You can select multiple images.</p>
-              </div>
-
-              {formData.photos.length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-2">Preview</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {formData.photos.map((url, idx) => (
-                      <div key={url + idx} className="relative group">
-                        <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-32 object-cover rounded-md border" />
-                        <button
-                          type="button"
-                          className="absolute top-1 right-1 bg-background/80 backdrop-blur border rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                          onClick={() =>
-                            setFormData((prev) => ({ ...prev, photos: prev.photos.filter((p, i) => i !== idx) }))
-                          }
-                          aria-label="Remove photo"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-
-      case 7:
         return (
           <Card>
             <CardHeader>
