@@ -68,7 +68,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Logo */}
-      <div className="hidden lg:flex lg:flex-1 items-center justify-center bg-[#007dfb]">
+      <div className="hidden lg:flex lg:flex-1 items-center justify-center bg-[#2941AF]">
         <img
           src="/logo.png"
           alt="Company logo"

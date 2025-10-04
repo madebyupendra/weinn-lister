@@ -25,7 +25,10 @@ interface PropertyFormData {
   rooms: Array<{
     id?: string; // Add id for existing rooms
     room_type: string;
-    bed_type: string;
+    beds: Array<{
+      type: string;
+      quantity: number;
+    }>;
     max_guests: number;
     units_available: number;
     facilities: string[];
@@ -228,9 +231,10 @@ const ListProperty = () => {
 
       // Convert rooms data
       const rooms = (roomsData || []).map(room => {
-        const { facilities, room_photos, ...roomData } = room;
+        const { facilities, room_photos, bed_type, ...roomData } = room;
         return {
           ...roomData,
+          beds: bed_type ? [{ type: bed_type, quantity: 1 }] : [{ type: '', quantity: 1 }],
           facilities: Array.isArray(facilities) ? facilities : [],
           photos: (room_photos || []).map((photo: any) => photo.photo_url)
         };
@@ -286,7 +290,7 @@ const ListProperty = () => {
       ...prev,
       rooms: [...prev.rooms, {
         room_type: '',
-        bed_type: '',
+        beds: [{ type: '', quantity: 1 }],
         max_guests: 1,
         units_available: 1,
         facilities: [],
@@ -309,6 +313,44 @@ const ListProperty = () => {
     setFormData(prev => ({
       ...prev,
       rooms: prev.rooms.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addBed = (roomIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      rooms: prev.rooms.map((room, i) => 
+        i === roomIndex 
+          ? { ...room, beds: [...room.beds, { type: '', quantity: 1 }] }
+          : room
+      )
+    }));
+  };
+
+  const updateBed = (roomIndex: number, bedIndex: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      rooms: prev.rooms.map((room, i) => 
+        i === roomIndex 
+          ? {
+              ...room,
+              beds: room.beds.map((bed, j) => 
+                j === bedIndex ? { ...bed, [field]: value } : bed
+              )
+            }
+          : room
+      )
+    }));
+  };
+
+  const removeBed = (roomIndex: number, bedIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      rooms: prev.rooms.map((room, i) => 
+        i === roomIndex 
+          ? { ...room, beds: room.beds.filter((_, j) => j !== bedIndex) }
+          : room
+      )
     }));
   };
 
@@ -406,7 +448,7 @@ const ListProperty = () => {
           const roomsData = formData.rooms.map(room => ({
             property_id: id,
             room_type: room.room_type,
-            bed_type: room.bed_type,
+            bed_type: room.beds.length > 0 ? room.beds[0].type : '',
             max_guests: room.max_guests,
             units_available: room.units_available,
             facilities: room.facilities,
@@ -500,7 +542,7 @@ const ListProperty = () => {
           const roomsData = formData.rooms.map(room => ({
             property_id: property.id,
             room_type: room.room_type,
-            bed_type: room.bed_type,
+            bed_type: room.beds.length > 0 ? room.beds[0].type : '',
             max_guests: room.max_guests,
             units_available: room.units_available,
             facilities: room.facilities,
@@ -855,20 +897,59 @@ const ListProperty = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Bed Type</Label>
-                      <Select
-                        value={room.bed_type}
-                        onValueChange={(value) => updateRoom(index, 'bed_type', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select bed type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['Single', 'Double', 'Twin', 'Queen', 'King'].map(type => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex justify-between items-center">
+                        <Label>Bed Configuration</Label>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => addBed(index)}
+                        >
+                          Add Bed
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {room.beds.map((bed, bedIndex) => (
+                          <div key={bedIndex} className="flex gap-2 items-end">
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">Bed Type</Label>
+                              <Select
+                                value={bed.type}
+                                onValueChange={(value) => updateBed(index, bedIndex, 'type', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select bed type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {['Single', 'Double', 'Twin', 'Queen', 'King'].map(type => (
+                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="w-20">
+                              <Label className="text-xs text-muted-foreground">Quantity</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={bed.quantity}
+                                onChange={(e) => updateBed(index, bedIndex, 'quantity', parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                            {room.beds.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeBed(index, bedIndex)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Max Guests</Label>
@@ -896,7 +977,7 @@ const ListProperty = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({length: 9}, (_, i) => i + 1).map(num => (
+                          {Array.from({length: 30}, (_, i) => i + 1).map(num => (
                             <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
                           ))}
                         </SelectContent>
@@ -1098,7 +1179,24 @@ const ListProperty = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold">Rooms</h3>
-                  <p className="text-muted-foreground">{formData.rooms.length} room types configured</p>
+                  <div className="space-y-2">
+                    {formData.rooms.map((room, index) => (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className="font-medium">{room.room_type || `Room ${index + 1}`}</div>
+                        <div className="text-sm text-muted-foreground">
+                          <div>Max Guests: {room.max_guests}</div>
+                          <div>Units Available: {room.units_available}</div>
+                          <div>Price: {room.price_lkr ? `LKR ${formatWithThousandSeparators(room.price_lkr)}` : 'Not set'}</div>
+                          <div className="mt-1">
+                            Beds: {room.beds.map(bed => `${bed.quantity} ${bed.type}`).join(', ') || 'Not configured'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {formData.rooms.length === 0 && (
+                      <p className="text-muted-foreground">No rooms configured</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <h3 className="font-semibold">Policies</h3>
@@ -1140,9 +1238,6 @@ const ListProperty = () => {
               <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto" />
             </div>
             <div className="flex items-center space-x-3">
-              <div className="text-sm text-muted-foreground">
-                {isEditing ? 'Edit Property' : 'List New Property'} - Step {currentStep} of {totalSteps}
-              </div>
               <Button 
                 variant="outline" 
                 size="sm"

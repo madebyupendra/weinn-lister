@@ -32,6 +32,12 @@ interface Property {
   state: string;
   status: string;
   created_at: string;
+  photos: Array<{
+    id: string;
+    photo_url: string;
+    caption: string | null;
+    sort_order: number;
+  }>;
 }
 
 const Dashboard = () => {
@@ -60,7 +66,15 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('*')
+        .select(`
+          *,
+          property_photos (
+            id,
+            photo_url,
+            caption,
+            sort_order
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -71,7 +85,12 @@ const Dashboard = () => {
           variant: "destructive",
         });
       } else {
-        setProperties(data || []);
+        // Transform the data to include photos
+        const propertiesWithPhotos = (data || []).map(property => ({
+          ...property,
+          photos: property.property_photos || []
+        }));
+        setProperties(propertiesWithPhotos);
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
@@ -243,6 +262,29 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </CardHeader>
+                {/* Property Images Grid */}
+                {property.photos && property.photos.length > 0 && (
+                  <div className="px-6 pb-4">
+                    <div className="grid grid-cols-3 gap-1 h-24">
+                      {property.photos.slice(0, 3).map((photo, index) => (
+                        <div key={photo.id} className="relative overflow-hidden rounded-md">
+                          <img
+                            src={photo.photo_url}
+                            alt={photo.caption || `Property image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                      {property.photos.length > 3 && (
+                        <div className="relative overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            +{property.photos.length - 3}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center text-sm text-muted-foreground">
