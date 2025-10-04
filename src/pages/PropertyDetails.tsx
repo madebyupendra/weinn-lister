@@ -58,7 +58,10 @@ interface PropertyDetails {
   rooms: Array<{
     id: string;
     room_type: string;
-    bed_type: string;
+    beds: Array<{
+      type: string;
+      quantity: number;
+    }>;
     max_guests: number;
     units_available: number;
     facilities: string[];
@@ -751,8 +754,12 @@ const PropertyDetails = () => {
                     <div className="flex items-center gap-3">
                       <Bed className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <span className="font-medium">Bed Type:</span>
-                        <span className="ml-2">{selectedRoom.bed_type}</span>
+                        <span className="font-medium">Beds:</span>
+                        <span className="ml-2">
+                          {selectedRoom.beds?.map((bed, index) => 
+                            `${bed.quantity} ${bed.type}${bed.quantity > 1 ? 's' : ''}`
+                          ).join(', ') || 'Not specified'}
+                        </span>
                       </div>
                     </div>
                     

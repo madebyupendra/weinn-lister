@@ -135,7 +135,7 @@ export type Database = {
       }
       property_rooms: {
         Row: {
-          bed_type: string
+          beds: Json | null
           created_at: string
           facilities: Json | null
           id: string
@@ -146,7 +146,7 @@ export type Database = {
           units_available: number
         }
         Insert: {
-          bed_type: string
+          beds?: Json | null
           created_at?: string
           facilities?: Json | null
           id?: string
@@ -157,7 +157,7 @@ export type Database = {
           units_available: number
         }
         Update: {
-          bed_type?: string
+          beds?: Json | null
           created_at?: string
           facilities?: Json | null
           id?: string

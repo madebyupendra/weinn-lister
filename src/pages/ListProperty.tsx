@@ -231,10 +231,10 @@ const ListProperty = () => {
 
       // Convert rooms data
       const rooms = (roomsData || []).map(room => {
-        const { facilities, room_photos, bed_type, ...roomData } = room;
+        const { facilities, room_photos, beds, ...roomData } = room;
         return {
           ...roomData,
-          beds: bed_type ? [{ type: bed_type, quantity: 1 }] : [{ type: '', quantity: 1 }],
+          beds: beds && Array.isArray(beds) ? beds : [{ type: '', quantity: 1 }],
           facilities: Array.isArray(facilities) ? facilities : [],
           photos: (room_photos || []).map((photo: any) => photo.photo_url)
         };
@@ -448,7 +448,7 @@ const ListProperty = () => {
           const roomsData = formData.rooms.map(room => ({
             property_id: id,
             room_type: room.room_type,
-            bed_type: room.beds.length > 0 ? room.beds[0].type : '',
+            beds: room.beds,
             max_guests: room.max_guests,
             units_available: room.units_available,
             facilities: room.facilities,
@@ -542,7 +542,7 @@ const ListProperty = () => {
           const roomsData = formData.rooms.map(room => ({
             property_id: property.id,
             room_type: room.room_type,
-            bed_type: room.beds.length > 0 ? room.beds[0].type : '',
+            beds: room.beds,
             max_guests: room.max_guests,
             units_available: room.units_available,
             facilities: room.facilities,
