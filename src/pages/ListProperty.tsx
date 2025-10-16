@@ -426,8 +426,8 @@ const ListProperty = () => {
             city: formData.city,
             state: formData.state,
             amenities: formData.amenities,
-            checkin_time: formData.checkin_time,
-            checkout_time: formData.checkout_time,
+            checkin_time: formData.checkin_time || null,
+            checkout_time: formData.checkout_time || null,
             cancellation_policy: formData.cancellation_policy,
             updated_at: new Date().toISOString()
           })
@@ -527,8 +527,8 @@ const ListProperty = () => {
             city: formData.city,
             state: formData.state,
             amenities: formData.amenities,
-            checkin_time: formData.checkin_time,
-            checkout_time: formData.checkout_time,
+            checkin_time: formData.checkin_time || null,
+            checkout_time: formData.checkout_time || null,
             cancellation_policy: formData.cancellation_policy,
             status: 'published'
           })

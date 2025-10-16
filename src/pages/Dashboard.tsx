@@ -75,6 +75,7 @@ const Dashboard = () => {
             sort_order
           )
         `)
+        .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -101,7 +102,7 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate('/');
   };
 
   const handleEditProperty = (property: Property) => {
@@ -167,7 +168,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto" />
+              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto cursor-pointer" onClick={() => navigate('/')} />
             </div>
             <div className="flex items-center space-x-3">
               <Button variant="outline" size="sm" onClick={handleSignOut}>

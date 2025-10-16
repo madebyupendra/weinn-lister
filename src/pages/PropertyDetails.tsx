@@ -132,17 +132,13 @@ const PropertyDetails = () => {
   const [galleryCarouselApi, setGalleryCarouselApi] = useState<any>(null);
   const [galleryCurrentSlide, setGalleryCurrentSlide] = useState(0);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
+  // Allow anonymous users; no redirect
 
   useEffect(() => {
-    if (id && user) {
+    if (id) {
       fetchPropertyDetails();
     }
-  }, [id, user]);
+  }, [id]);
 
   useEffect(() => {
     if (!carouselApi) return;
@@ -173,7 +169,7 @@ const PropertyDetails = () => {
   const fetchPropertyDetails = async () => {
     try {
       // Fetch property with photos
-      const { data: propertyData, error: propertyError } = await supabase
+      let propertyQuery = supabase
         .from('properties')
         .select(`
           *,
@@ -184,8 +180,14 @@ const PropertyDetails = () => {
             sort_order
           )
         `)
-        .eq('id', id)
-        .single();
+        .eq('id', id);
+
+      // For anonymous users, restrict to published properties
+      if (!user) {
+        propertyQuery = propertyQuery.eq('status', 'published');
+      }
+
+      const { data: propertyData, error: propertyError } = await propertyQuery.single();
 
       if (propertyError) throw propertyError;
 
@@ -230,7 +232,7 @@ const PropertyDetails = () => {
         description: "Failed to load property details. Please try again.",
         variant: "destructive",
       });
-      navigate('/dashboard');
+      navigate(user ? '/dashboard' : '/');
     } finally {
       setLoading(false);
     }
@@ -295,17 +297,19 @@ const PropertyDetails = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto" />
+              <img src="/weinn-logo.png" alt="Logo" className="h-8 w-auto cursor-pointer" onClick={() => navigate('/')} />
             </div>
             <div className="flex items-center space-x-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigate('/dashboard')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
+              {user && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              )}
             </div>
           </div>
         </div>
