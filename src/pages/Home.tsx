@@ -30,6 +30,7 @@ type Property = {
   city: string;
   state: string;
   status: string | null;
+  preview_image_url?: string | null;
   created_at: string;
   property_photos?: Photo[];
 };
@@ -60,7 +61,12 @@ const Home = () => {
         .order("created_at", { ascending: false })
         .limit(24);
 
-      if (!error) setProperties(data || []);
+      if (!error) {
+        console.log('Fetched properties:', data);
+        setProperties(data || []);
+      } else {
+        console.error('Error fetching properties:', error);
+      }
       setLoading(false);
     };
     fetchPublished();
@@ -228,8 +234,15 @@ const Home = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {properties.map((p) => {
-              const cover = [...(p.property_photos || [])]
-                .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))[0];
+              // Debug logging
+              console.log('Property:', p.name, 'Preview URL:', p.preview_image_url, 'Photos:', p.property_photos?.length);
+              
+              const cover = p.preview_image_url ? 
+                { photo_url: p.preview_image_url, caption: p.name } :
+                [...(p.property_photos || [])]
+                  .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))[0];
+              
+              console.log('Selected cover:', cover);
               return (
                 <Card
                   key={p.id}

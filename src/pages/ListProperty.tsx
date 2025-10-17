@@ -39,6 +39,7 @@ interface PropertyFormData {
   checkout_time: string;
   cancellation_policy: string;
   photos: string[]; // Cloudinary URLs
+  preview_image_url: string; // Preview/thumbnail image URL
 }
 
 const AMENITY_CATEGORIES = {
@@ -174,7 +175,8 @@ const ListProperty = () => {
     checkin_time: '',
     checkout_time: '',
     cancellation_policy: '',
-    photos: []
+    photos: [],
+    preview_image_url: ''
   });
 
   useEffect(() => {
@@ -237,8 +239,8 @@ const ListProperty = () => {
         const { facilities, room_photos, beds, ...roomData } = room;
         return {
           ...roomData,
-          beds: beds && Array.isArray(beds) ? beds : [{ type: '', quantity: 1 }],
-          facilities: Array.isArray(facilities) ? facilities : [],
+          beds: beds && Array.isArray(beds) ? beds as Array<{ type: string; quantity: number }> : [{ type: '', quantity: 1 }],
+          facilities: Array.isArray(facilities) ? facilities as string[] : [],
           photos: (room_photos || []).map((photo: any) => photo.photo_url)
         };
       });
@@ -254,11 +256,12 @@ const ListProperty = () => {
         city: propertyData.city,
         state: propertyData.state,
         amenities: amenities,
-        rooms: rooms,
+        rooms: rooms as any,
         checkin_time: propertyData.checkin_time || '',
         checkout_time: propertyData.checkout_time || '',
         cancellation_policy: propertyData.cancellation_policy || '',
-        photos: photos
+        photos: photos,
+        preview_image_url: propertyData.preview_image_url || ''
       });
     } catch (error: any) {
       console.error('Error loading property:', error);
@@ -429,6 +432,7 @@ const ListProperty = () => {
 
       if (isEditing) {
         // Update existing property
+        console.log('Updating property with preview_image_url:', formData.preview_image_url);
         const { error: propertyError } = await supabase
           .from('properties')
           .update({
@@ -442,6 +446,7 @@ const ListProperty = () => {
             checkin_time: formData.checkin_time || null,
             checkout_time: formData.checkout_time || null,
             cancellation_policy: formData.cancellation_policy,
+            preview_image_url: formData.preview_image_url || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', id);
@@ -529,6 +534,7 @@ const ListProperty = () => {
         });
       } else {
         // Create new property (existing logic)
+        console.log('Submitting property with preview_image_url:', formData.preview_image_url);
         const { data: property, error: propertyError } = await supabase
           .from('properties')
           .insert({
@@ -543,6 +549,7 @@ const ListProperty = () => {
             checkin_time: formData.checkin_time || null,
             checkout_time: formData.checkout_time || null,
             cancellation_policy: formData.cancellation_policy,
+            preview_image_url: formData.preview_image_url || null,
             status: 'published'
           })
           .select()
@@ -752,6 +759,66 @@ const ListProperty = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Preview Image Section */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Preview Image (Thumbnail)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Choose the main image that will appear as the thumbnail on property listings. This should be your best photo.
+                  </p>
+                </div>
+                
+                {formData.preview_image_url ? (
+                  <div className="relative group max-w-xs">
+                    <img 
+                      src={formData.preview_image_url} 
+                      alt="Preview" 
+                      className="w-full h-32 object-cover rounded-md border" 
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-background/80 backdrop-blur border rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                      onClick={() => setFormData(prev => ({ ...prev, preview_image_url: '' }))}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center max-w-xs">
+                    <input
+                      id="preview-image"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        setIsUploading(true);
+                        try {
+                          const result = await uploadImageToCloudinary(file);
+                          setFormData(prev => ({ ...prev, preview_image_url: result.url }));
+                          toast({ title: "Preview image uploaded" });
+                        } catch (err: any) {
+                          toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+                        } finally {
+                          setIsUploading(false);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                    />
+                    <Label
+                      htmlFor="preview-image"
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${
+                        isUploading ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90'
+                      }`}
+                    >
+                      {isUploading ? 'Uploading...' : 'Select Preview Image'}
+                    </Label>
+                  </div>
+                )}
               </div>
 
               {/* Upload Photos Section */}
@@ -1218,6 +1285,20 @@ const ListProperty = () => {
                     Check-out: {formData.checkout_time || 'Not set'} | 
                     Cancellation: {formData.cancellation_policy || 'Not set'}
                   </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Preview Image</h3>
+                  {formData.preview_image_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={formData.preview_image_url} 
+                        alt="Preview" 
+                        className="w-32 h-20 object-cover rounded-md border" 
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No preview image set</p>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold">Photos</h3>

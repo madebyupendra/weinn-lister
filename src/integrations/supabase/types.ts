@@ -55,6 +55,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          preview_image_url: string | null
           property_type: string
           state: string
           status: string | null
@@ -72,6 +73,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          preview_image_url?: string | null
           property_type: string
           state: string
           status?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          preview_image_url?: string | null
           property_type?: string
           state?: string
           status?: string | null
