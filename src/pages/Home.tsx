@@ -5,8 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/hero-image.jpg";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+
+// Hero carousel images
+const heroImages = [
+  "https://res.cloudinary.com/djcr0thya/image/upload/v1760672056/sander-traa-2vNC1J_TafQ-unsplash_lz3gui.jpg",
+  "https://res.cloudinary.com/djcr0thya/image/upload/v1760672054/austin-curtis-nkgwvrUhdUA-unsplash_jm0gtb.jpg",
+  "https://res.cloudinary.com/djcr0thya/image/upload/v1760672054/oleks-film-_jxFjHoOyuU-unsplash_ney22x.jpg"
+];
 
 type Photo = {
   id: string;
@@ -111,14 +117,14 @@ const Home = () => {
               opts={{ align: "start", loop: true }}
             >
               <CarouselContent>
-                {[0,1,2,3,4].map((i) => (
+                {heroImages.map((image, i) => (
                   <CarouselItem key={i}>
                     <div
                       className="relative w-full h-[60vh] md:h-[70vh] lg:h-[70vh]"
                     >
                       <img
-                        src={heroImage}
-                        alt="Weinn hero"
+                        src={image}
+                        alt={`Weinn hero ${i + 1}`}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/45" />
@@ -162,7 +168,7 @@ const Home = () => {
 
             {/* Dots Indicators */}
             <div className="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-auto">
-              {[0,1,2,3,4].map((i) => (
+              {heroImages.map((_, i) => (
                 <button
                   key={i}
                   aria-label={`Go to slide ${i + 1}`}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -137,7 +137,8 @@ const ListProperty = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentStep = parseInt(searchParams.get('step') || '1', 10);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingRoomIndex, setUploadingRoomIndex] = useState<number | null>(null); // Track which room is uploading
@@ -188,6 +189,13 @@ const ListProperty = () => {
       loadPropertyData();
     }
   }, [isEditing, id]);
+
+  // Ensure step parameter is set correctly on initial load
+  useEffect(() => {
+    if (!searchParams.get('step')) {
+      setSearchParams({ step: '1' });
+    }
+  }, [searchParams, setSearchParams]);
 
   const loadPropertyData = async () => {
     setLoading(true);
@@ -275,13 +283,13 @@ const ListProperty = () => {
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+      setSearchParams({ step: (currentStep + 1).toString() });
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      setSearchParams({ step: (currentStep - 1).toString() });
     }
   };
 
