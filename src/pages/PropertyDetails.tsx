@@ -427,7 +427,7 @@ const PropertyDetails = () => {
             <div className="mb-8">
               {/* Desktop Grid View - Static Layout */}
               <div className="hidden md:block">
-                <div className="grid grid-cols-4 gap-2 min-h-[300px] max-h-[500px]">
+                <div className="grid grid-cols-4 gap-2">
                   {/* Main Photo */}
                   <div 
                     className="col-span-2 row-span-2 cursor-pointer overflow-hidden rounded-l-lg group relative"
@@ -436,11 +436,15 @@ const PropertyDetails = () => {
                       setShowGalleryModal(true);
                     }}
                   >
-                    <img
-                      src={property.photos[0]?.photo_url}
-                      alt={property.photos[0]?.caption || property.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    <div className="relative w-full h-full">
+                      <div className="aspect-[4/3] w-full">
+                        <img
+                          src={property.photos[0]?.photo_url}
+                          alt={property.photos[0]?.caption || property.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    </div>
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                       <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -460,11 +464,13 @@ const PropertyDetails = () => {
                           setShowGalleryModal(true);
                         }}
                       >
-                        <img
-                          src={photo.photo_url}
-                          alt={photo.caption || `${property.name} photo ${index + 2}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <div className="aspect-[4/3] w-full">
+                          <img
+                            src={photo.photo_url}
+                            alt={photo.caption || `${property.name} photo ${index + 2}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                           <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
@@ -499,7 +505,7 @@ const PropertyDetails = () => {
                     {property.photos.map((photo, index) => (
                       <CarouselItem key={photo.id} className="pl-0">
                         <div 
-                          className="relative aspect-video cursor-pointer overflow-hidden"
+                          className="relative aspect-[4/3] cursor-pointer overflow-hidden"
                           onClick={() => {
                             setGalleryCurrentSlide(index);
                             setShowGalleryModal(true);
@@ -571,11 +577,15 @@ const PropertyDetails = () => {
                     {property.photos.map((photo, index) => (
                       <CarouselItem key={photo.id}>
                         <div className="relative">
-                          <img
-                            src={photo.photo_url}
-                            alt={photo.caption || `${property.name} photo ${index + 1}`}
-                            className="w-full h-[70vh] object-contain rounded-lg"
-                          />
+                          <div className="mx-auto max-h-[80vh] w-full">
+                            <div className="aspect-[4/3] w-full">
+                              <img
+                                src={photo.photo_url}
+                                alt={photo.caption || `${property.name} photo ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            </div>
+                          </div>
                           {photo.caption && (
                             <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-4 rounded-b-lg">
                               <p className="text-sm">{photo.caption}</p>
