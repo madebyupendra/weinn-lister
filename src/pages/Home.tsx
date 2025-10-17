@@ -202,9 +202,6 @@ const Home = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Explore Published Properties</h1>
           <p className="text-muted-foreground">A growing list of properties submitted by owners.</p>
-          <div className="mt-3">
-            <Badge variant="secondary">{properties.length} properties</Badge>
-          </div>
         </div>
 
         {properties.length === 0 ? (
