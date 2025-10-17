@@ -190,12 +190,7 @@ const ListProperty = () => {
     }
   }, [isEditing, id]);
 
-  // Ensure step parameter is set correctly on initial load
-  useEffect(() => {
-    if (!searchParams.get('step')) {
-      setSearchParams({ step: '1' });
-    }
-  }, [searchParams, setSearchParams]);
+  // No need to automatically set step=1, let step 1 be without URL parameter
 
   const loadPropertyData = async () => {
     setLoading(true);
@@ -283,13 +278,23 @@ const ListProperty = () => {
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
-      setSearchParams({ step: (currentStep + 1).toString() });
+      if (currentStep === 1) {
+        // Going from step 1 to step 2, add the step parameter
+        setSearchParams({ step: '2' });
+      } else {
+        setSearchParams({ step: (currentStep + 1).toString() });
+      }
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setSearchParams({ step: (currentStep - 1).toString() });
+      if (currentStep === 2) {
+        // Going from step 2 to step 1, remove the step parameter
+        setSearchParams({});
+      } else {
+        setSearchParams({ step: (currentStep - 1).toString() });
+      }
     }
   };
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { useToast } from "@/hooks/use-toast";
 
 // Hero carousel images
 const heroImages = [
@@ -40,6 +41,7 @@ const Home = () => {
   const [heroApi, setHeroApi] = useState<any>(null);
   const [heroCurrent, setHeroCurrent] = useState(0);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPublished = async () => {
@@ -148,7 +150,17 @@ const Home = () => {
                     <Button
                       variant="hero"
                       size="lg"
-                      onClick={() => navigate("/list-property")}
+                      onClick={() => {
+                        if (user) {
+                          navigate("/dashboard");
+                        } else {
+                          toast({
+                            title: "Sign in required",
+                            description: "Please sign in to list your property",
+                          });
+                          navigate("/auth");
+                        }
+                      }}
                       className="sm:w-auto"
                     >
                       List your property
@@ -194,7 +206,21 @@ const Home = () => {
             <CardContent>
               <h3 className="text-2xl font-semibold mb-2">No published properties yet</h3>
               <p className="text-muted-foreground mb-6">Be the first to list a property.</p>
-              <Button variant="gradient" size="lg" onClick={() => navigate("/list-property")}>
+              <Button 
+                variant="gradient" 
+                size="lg" 
+                onClick={() => {
+                  if (user) {
+                    navigate("/dashboard");
+                  } else {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to list your property",
+                    });
+                    navigate("/auth");
+                  }
+                }}
+              >
                 List Your Property
               </Button>
             </CardContent>
